@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#ff78b5">
+<title>مغامرات فريدة</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;font-family:Tahoma,Arial,sans-serif;
+ background:linear-gradient(145deg,#ffe6f3,#e9e1ff,#d9f5ff);
+ color:#74375f;text-align:center;min-height:100vh;
+}
+header{padding:18px 12px}
+h1{font-size:32px;margin:5px;color:#d84d91}
+header p{font-size:16px}
+.stats{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.stat{background:white;border-radius:22px;padding:10px 18px;
+ box-shadow:0 4px 12px #d7a8c544;font-weight:bold}
+main{max-width:620px;margin:auto;padding:12px}
+.panel{background:#ffffffd9;border-radius:28px;padding:20px;
+ box-shadow:0 8px 25px #b68ab044;margin-bottom:16px}
+.hero{font-size:90px;animation:bounce 2s infinite}
+@keyframes bounce{50%{transform:translateY(-9px)}}
+h2{color:#d84d91}
+button{
+ border:0;border-radius:20px;padding:15px 18px;
+ font-size:19px;font-weight:bold;cursor:pointer;
+ color:#74375f;background:#ffe0ef;
+ box-shadow:0 4px 0 #e9a4c7;
+ margin:6px;min-height:58px;touch-action:manipulation;
+}
+button:active{transform:translateY(3px);box-shadow:none}
+.primary{background:linear-gradient(120deg,#ff8cbe,#c79cff);color:white}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.answer{background:white;font-size:29px;min-height:85px}
+.answer:disabled{opacity:.8}
+.hidden{display:none!important}
+.message{font-size:22px;font-weight:bold;min-height:42px;margin:14px}
+.small{font-size:14px;color:#936c87}
+footer{padding:15px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+ <h1>🌸 مغامرات فريدة 🌸</h1>
+ <p>نتعلم ونلعب ونكتشف مع فريدة!</p>
+ <div class="stats">
+  <div class="stat">⭐ النجوم: <span id="stars">0</span></div>
+  <div class="stat">🏆 المستوى: <span id="level">1</span></div>
+ </div>
+</header>
+
+<main>
+ <section id="home" class="panel">
+  <div class="hero">👧🏻</div>
+  <h2>أهلاً يا بطل!</h2>
+  <p>فريدة مستنياك نلعب ونتعلم سوا ❤️</p>
+  <button class="primary" onclick="showWorlds()">🚀 ابدأ المغامرة</button>
+  <div>
+   <button onclick="toggleMusic()" id="musicBtn">🎵 تشغيل الموسيقى</button>
+   <button onclick="toggleVoice()">🔊 الصوت</button>
+  </div>
+  <p class="small">لعبة تعليمية ممتعة للأطفال من 3 إلى 5 سنوات</p>
+ </section>
+
+ <section id="worlds" class="panel hidden">
+  <h2>🌈 اختار عالمك</h2>
+  <div class="grid">
+   <button onclick="startGame('colors')">🎨<br>الألوان</button>
+   <button onclick="startGame('numbers')">🔢<br>الأرقام</button>
+   <button onclick="startGame('animals')">🐘<br>الحيوانات</button>
+   <button onclick="startGame('shapes')">🔷<br>الأشكال</button>
+   <button onclick="startGame('fruits')">🍎<br>الفواكه</button>
+   <button onclick="startGame('memory')">🧠<br>الذاكرة</button>
+  </div>
+  <button onclick="home()">🏠 الرئيسية</button>
+ </section>
+
+ <section id="game" class="panel hidden">
+  <h2 id="worldTitle">🌸 المغامرة</h2>
+  <p id="progress">السؤال 1</p>
+  <div class="hero" id="questionIcon">🌈</div>
+  <h2 id="question">أين اللون الأحمر؟</h2>
+  <div id="answers" class="grid"></div>
+  <div id="message" class="message"></div>
+  <button onclick="home()">🏠 الرئيسية</button>
+  <button onclick="showWorlds()">🗺️ العوالم</button>
+ </section>
+
+ <section id="result" class="panel hidden">
+  <div class="hero">🏆</div>
+  <h2>أحسنت يا بطل!</h2>
+  <p id="resultText"></p>
+  <button class="primary" onclick="showWorlds()">مغامرة جديدة 🌈</button>
+  <button onclick="home()">الرئيسية 🏠</button>
+ </section>
+</main>
+
+<footer>صُنعت بحب من أجل الأطفال ❤️ – مغامرات فريدة</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+let stars=Number(localStorage.getItem('faridaStars')||0);
+let level=1,voiceOn=true,musicOn=false;
+let audioCtx=null,musicTimer=null,step=0;
+let current=[],index=0,earned=0,locked=false;
+
+function updateStats(){
+ $('stars').textContent=stars;
+ $('level').textContent=level;
+}
+function screen(id){
+ ['home','worlds','game','result'].forEach(x=>$(x).classList.add('hidden'));
+ $(id).classList.remove('hidden');
+}
+function home(){screen('home');updateStats();}
+function showWorlds(){screen('worlds');}
+
+function speak(text){
+ if(!voiceOn||!('speechSynthesis' in window))return;
+ speechSynthesis.cancel();
+ let u=new SpeechSynthesisUtterance(text);
+ u.lang='ar-SA';u.rate=.85;u.pitch=1.3;
+ let voices=speechSynthesis.getVoices();
+ let ar=voices.find(v=>v.lang.startsWith('ar'));
+ if(ar)u.voice=ar;
+ speechSynthesis.speak(u);
+}
+function toggleVoice(){
+ voiceOn=!voiceOn;
+ if(!voiceOn&&'speechSynthesis' in window)speechSynthesis.cancel();
+ speak(voiceOn?'تم تشغيل الصوت':'');
+}
+function tone(freq,duration=.18){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  let osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type='sine';osc.frequency.value=freq;
+  gain.gain.setValueAtTime(.0001,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.12,audioCtx.currentTime+.02);
+  gain.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+duration);
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  osc.start();osc.stop(audioCtx.currentTime+duration);
+ }catch(e){}
+}
+function correctSound(){tone(660);setTimeout(()=>tone(880),140);setTimeout(()=>tone(1100),280);}
+function wrongSound(){tone(240,.3);}
+function toggleMusic(){
+ musicOn=!musicOn;
+ $('musicBtn').textContent=musicOn?'🔇 إيقاف الموسيقى':'🎵 تشغيل الموسيقى';
+ if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
+ if(musicOn){
+  let notes=[392,494,587,494,440,523,659,523];
+  step=0;
+  let play=()=>{
+   if(!musicOn)return;
+   tone(notes[step++%notes.length],.3);
+  };
+  play();musicTimer=setInterval(play,650);
+ }
+}
+
+const data={
+ colors:[
+  ['أين اللون الأحمر؟','🔴',['🔴','🔵','🟡'],0],
+  ['أين اللون الأزرق؟','🔵',['🟢','🔵','🔴'],1],
+  ['أين اللون الأصفر؟','🟡',['🟣','🟡','🟤'],1],
+  ['أين اللون الأخضر؟','🟢',['🟠','🔴','🟢'],2],
+  ['أين اللون الوردي؟','🩷',['🩷','⚫','🔵'],0]
+ ],
+ numbers:[
+  ['كم نجمة هنا؟','⭐⭐⭐',['1','2','3'],2],
+  ['كم تفاحة هنا؟','🍎🍎',['1','2','3'],1],
+  ['كم بالونة هنا؟','🎈🎈🎈🎈',['2','3','4'],2],
+  ['كم قطة هنا؟','🐱',['1','2','3'],0],
+  ['كم زهرة هنا؟','🌸🌸🌸',['1','2','3'],2]
+ ],
+ animals:[
+  ['مين بيقول مياو؟','🐾',['🐶','🐱','🐮'],1],
+  ['مين بيقول عو عو؟','🐾',['🐶','🐸','🐰'],0],
+  ['مين الحيوان الكبير؟','🐘',['🐭','🐜','🐘'],2],
+  ['مين بيحب الجزر؟','🥕',['🐰','🐱','🐟'],0],
+  ['مين بيطير؟','🕊️',['🐘','🐦','🐢'],1]
+ ],
+ shapes:[
+  ['أين الدائرة؟','⭕',['🔺','⭕','🟦'],1],
+  ['أين المربع؟','🟦',['🟦','🔴','🔺'],0],
+  ['أين المثلث؟','🔺',['⚪','🟩','🔺'],2],
+  ['أين المستطيل؟','▭',['🔺','▭','⭕'],1]
+ ],
+ fruits:[
+  ['أين التفاحة؟','🍎',['🍌','🍎','🍇'],1],
+  ['أين الموز؟','🍌',['🍓','🍊','🍌'],2],
+  ['أين العنب؟','🍇',['🍇','🍉','🍍'],0],
+  ['أين الفراولة؟','🍓',['🍒','🍓','🥝'],1]
+ ],
+ memory:[
+  ['ما الحيوان الذي له خرطوم؟','🐘',['🐘','🐱','🐰'],0],
+  ['ما الفاكهة الصفراء؟','🍌',['🍇','🍌','🍓'],1],
+  ['ما الشكل المستدير؟','⭕',['🔺','🟦','⭕'],2],
+  ['ما الذي يضيء في السماء ليلًا؟','🌙',['☀️','🌙','🌳'],1]
+ ]
+};
+const names={
+ colors:'🎨 عالم الألوان',numbers:'🔢 عالم الأرقام',
+ animals:'🐾 عالم الحيوانات',shapes:'🔷 عالم الأشكال',
+ fruits:'🍎 عالم الفواكه',memory:'🧠 عالم الذكاء'
+};
+function startGame(world){
+ current=data[world].map(x=>({q:x[0],icon:x[1],a:x[2],c:x[3]}));
+ current.sort(()=>Math.random()-.5);
+ index=0;earned=0;
+ $('worldTitle').textContent=names[world];
+ screen('game');showQuestion();
+}
+function showQuestion(){
+ locked=false;
+ let q=current[index];
+ $('progress').textContent='السؤال '+(index+1)+' من '+current.length;
+ $('question').textContent=q.q;
+ $('questionIcon').textContent=q.icon;
+ $('message').textContent='';
+ $('answers').innerHTML='';
+ q.a.forEach((a,i)=>{
+  let b=document.createElement('button');
+  b.className='answer';b.textContent=a;
+  b.onclick=()=>answer(i,b);
+  $('answers').appendChild(b);
+ });
+ speak(q.q);
+}
+function answer(i,button){
+ if(locked)return;
+ locked=true;
+ let q=current[index];
+ [...$('answers').children].forEach(b=>b.disabled=true);
+ if(i===q.c){
+  stars++;earned++;
+  localStorage.setItem('faridaStars',stars);
+  updateStats();
+  button.style.background='#c9f7d5';
+  $('message').textContent='🎉 برافو! إجابة صحيحة';
+  correctSound();speak('برافو! إجابة صحيحة');
+ }else{
+  button.style.background='#ffd8df';
+  $('message').textContent='💗 أحسنت المحاولة! الإجابة الصحيحة '+q.a[q.c];
+  wrongSound();speak('محاولة جميلة! لنحاول مرة أخرى');
+  [...$('answers').children][q.c].style.background='#c9f7d5';
+ }
+ setTimeout(()=>{
+  index++;
+  if(index>=current.length)finish();
+  else showQuestion();
+ },1600);
+}
+function finish(){
+ level++;
+ updateStats();
+ $('resultText').textContent='جمعت '+earned+' نجمة في هذه المغامرة! ⭐';
+ screen('result');
+ correctSound();speak('رائع! لقد أنهيت المغامرة');
+}
+updateStats();
+</script>
+</body>
+</html>
